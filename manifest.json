@@ -1,0 +1,62 @@
+{
+  "schema": 1,
+  "project": "ESP-Mobile-Flash",
+  "repository": "zzackk125/ESP-Mobile-Flash",
+  "branch": "ccr-765e14e2-allrvi",
+  "commit": "80ea598a6e67782a6ae4fccf746e98a2d56d6a71",
+  "commit_message": "CI: free runner disk for ESP toolchains, publish partial builds",
+  "built_at": "2026-10-12T23:19:32+00:00",
+  "builds": [
+    {
+      "env": "esp32-s3",
+      "board": "esp32-s3-devkitc-1",
+      "framework": [
+        "arduino"
+      ],
+      "chip": "ESP32-S3",
+      "flash_size": "8MB",
+      "app_offset": 65536,
+      "ota_capable": true,
+      "variants": {
+        "standard": {
+          "merged": "esp32-s3/standard.merged.bin",
+          "app": "esp32-s3/standard.app.bin",
+          "merged_size": 955056,
+          "app_size": 889520
+        },
+        "ota": {
+          "merged": "esp32-s3/ota.merged.bin",
+          "app": "esp32-s3/ota.app.bin",
+          "merged_size": 995520,
+          "app_size": 929984
+        }
+      }
+    },
+    {
+      "env": "esp32-c6",
+      "board": "esp32-c6-devkitc-1",
+      "framework": [
+        "arduino"
+      ],
+      "chip": "ESP32-C6",
+      "flash_size": "8MB",
+      "app_offset": 65536,
+      "ota_capable": true,
+      "variants": {
+        "standard": {
+          "merged": "esp32-c6/standard.merged.bin",
+          "app": "esp32-c6/standard.app.bin",
+          "merged_size": 1079616,
+          "app_size": 1014080
+        },
+        "ota": {
+          "merged": "esp32-c6/ota.merged.bin",
+          "app": "esp32-c6/ota.app.bin",
+          "merged_size": 1124896,
+          "app_size": 1059360
+        }
+      }
+    }
+  ],
+  "failed": []
+}
