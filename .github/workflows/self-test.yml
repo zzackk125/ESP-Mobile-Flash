@@ -1,0 +1,21 @@
+# Builds template/ with this branch's tools so changes to the pipeline are tested
+# end to end. The result is published to firmware/<branch> of this repo, so the
+# template also shows up in the flasher as a test project.
+name: Self-test (build template)
+
+on:
+  push:
+    branches-ignore: ["firmware/**"]
+    paths: ["template/**", "tools/**", "ota/**", ".github/workflows/build-firmware.yml", ".github/workflows/self-test.yml"]
+  delete:
+  workflow_dispatch:
+
+jobs:
+  firmware:
+    uses: ./.github/workflows/build-firmware.yml
+    permissions:
+      contents: write
+    with:
+      project-dir: template
+      tools-repo: ${{ github.repository }}
+      tools-ref: ${{ github.sha }}

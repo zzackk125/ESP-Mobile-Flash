@@ -1,0 +1,125 @@
+# Reusable workflow: build every PlatformIO env of the calling repo into flashable
+# images and publish them to the branch `firmware/<source-branch>` of that repo,
+# where the ESP Mobile Flash web app picks them up.
+#
+# Call it from a project repo (see template/.github/workflows/firmware.yml):
+#
+#   jobs:
+#     firmware:
+#       uses: zzackk125/ESP-Mobile-Flash/.github/workflows/build-firmware.yml@main
+#       permissions:
+#         contents: write
+name: Build ESP firmware
+
+on:
+  workflow_call:
+    inputs:
+      project-dir:
+        description: Directory containing platformio.ini
+        type: string
+        default: "."
+      environments:
+        description: Comma-separated PlatformIO envs to build (default all)
+        type: string
+        default: ""
+      ota-variant:
+        description: Also build the Wi-Fi OTA variant of each env
+        type: boolean
+        default: true
+      tools-repo:
+        description: Repository providing the build tools
+        type: string
+        default: zzackk125/ESP-Mobile-Flash
+      tools-ref:
+        description: Git ref of the build tools
+        type: string
+        default: main
+
+jobs:
+  cleanup:
+    # When a source branch is deleted, delete its firmware branch too.
+    if: github.event_name == 'delete' && github.event.ref_type == 'branch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Delete firmware branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REF: ${{ github.event.ref }}
+        run: |
+          case "$REF" in firmware/*) exit 0 ;; esac
+          git ls-remote --exit-code "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "refs/heads/firmware/$REF" >/dev/null \
+            && git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" --delete "firmware/$REF" \
+            || echo "no firmware/$REF branch"
+
+  build:
+    if: github.event_name != 'delete' && !startsWith(github.ref_name, 'firmware/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: mobile-flash-${{ github.repository }}-${{ github.ref_name }}
+      cancel-in-progress: true
+    steps:
+      - name: Check out project
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Check out build tools
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.tools-repo }}
+          ref: ${{ inputs.tools-ref }}
+          path: .mobile-flash-tools
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio
+            ~/.cache/pip
+          key: pio-${{ runner.os }}-${{ hashFiles(format('{0}/platformio.ini', inputs.project-dir)) }}
+          restore-keys: pio-${{ runner.os }}-
+
+      - name: Install PlatformIO
+        run: pip install --upgrade platformio
+
+      - name: Build firmware
+        run: |
+          args=(--project-dir "${{ inputs.project-dir }}" --out-dir "$RUNNER_TEMP/firmware-out")
+          [ -n "${{ inputs.environments }}" ] && args+=(--envs "${{ inputs.environments }}")
+          [ "${{ inputs.ota-variant }}" = "true" ] || args+=(--no-ota)
+          python .mobile-flash-tools/tools/build_firmware.py "${args[@]}"
+
+      - name: Publish to firmware/${{ github.ref_name }}
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET: firmware/${{ github.ref_name }}
+        run: |
+          cd "$RUNNER_TEMP/firmware-out"
+          cat > README.md <<EOF
+          Firmware built from \`${GITHUB_REF_NAME}\` @ ${GITHUB_SHA} by ESP Mobile Flash.
+          This branch is overwritten on every build; flash it with the ESP Mobile Flash web app.
+          EOF
+          git init -q -b "$TARGET"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Firmware for ${GITHUB_REF_NAME} @ ${GITHUB_SHA::7}"
+          git push -q --force "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/$TARGET"
+          echo "### Firmware published to \`$TARGET\`" >> "$GITHUB_STEP_SUMMARY"
+          jq -r '.builds[] | "- **\(.env)** \(.chip) (\(.variants | keys | join(", ")))"' manifest.json >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ github.run_id }}
+          path: ${{ runner.temp }}/firmware-out
+          retention-days: 14

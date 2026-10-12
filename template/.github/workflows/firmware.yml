@@ -1,0 +1,19 @@
+# Builds this project with ESP Mobile Flash and publishes flashable images to
+# the branch firmware/<branch>. Flash them from https://zzackk125.github.io/ESP-Mobile-Flash/
+name: Firmware
+
+on:
+  push:
+    branches-ignore: ["firmware/**"]
+  delete:
+  workflow_dispatch:
+
+jobs:
+  firmware:
+    uses: zzackk125/ESP-Mobile-Flash/.github/workflows/build-firmware.yml@main
+    permissions:
+      contents: write
+    # with:
+    #   project-dir: .            # folder containing platformio.ini
+    #   environments: esp32-s3    # comma-separated; default = every [env:*]
+    #   ota-variant: true         # also build the Wi-Fi update variant

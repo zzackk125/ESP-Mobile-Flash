@@ -1,0 +1,119 @@
+:root {
+  color-scheme: light dark;
+  --bg: #f4f5f7;
+  --card: #ffffff;
+  --text: #16181d;
+  --muted: #5d6470;
+  --border: #d9dce1;
+  --accent: #0b6bcb;
+  --accent-text: #ffffff;
+  --danger: #c62828;
+  --warn-bg: #fff4d6;
+  --log-bg: #0f1115;
+  --log-text: #d6dde6;
+  --ok: #2e7d32;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161a;
+    --card: #1d2026;
+    --text: #e8eaee;
+    --muted: #9aa2ae;
+    --border: #323741;
+    --accent: #4a9cf0;
+    --accent-text: #0c1016;
+    --danger: #ef6b6b;
+    --warn-bg: #3b3220;
+    --log-bg: #0b0d10;
+    --ok: #66bb6a;
+  }
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; background: var(--bg); color: var(--text); }
+body {
+  font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+}
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px; position: sticky; top: 0; background: var(--bg); z-index: 2;
+  border-bottom: 1px solid var(--border);
+}
+h1 { font-size: 19px; margin: 0; }
+h2 { font-size: 17px; margin: 0 0 8px; }
+main { max-width: 640px; margin: 0 auto; padding: 12px 16px 48px; }
+.card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+  padding: 14px; margin-bottom: 14px;
+}
+.card.warn { background: var(--warn-bg); }
+.muted { color: var(--muted); font-size: 14px; }
+small.muted { font-size: 13px; }
+a { color: var(--accent); }
+code { font-size: 13px; overflow-wrap: anywhere; }
+
+label { display: block; margin: 10px 0; font-size: 14px; color: var(--muted); }
+label > input, label > select { margin-top: 4px; }
+input, select, button { font: inherit; }
+input[type=text], input[type=password], input[type=search], input:not([type]), select {
+  width: 100%; padding: 10px 12px; border-radius: 10px;
+  border: 1px solid var(--border); background: var(--bg); color: var(--text);
+}
+input[type=file] { margin: 8px 0; max-width: 100%; }
+label.check { display: flex; gap: 10px; align-items: flex-start; color: var(--text); font-size: 15px; }
+label.check input { width: 22px; height: 22px; margin-top: 1px; flex: none; }
+
+button {
+  padding: 10px 14px; border-radius: 10px; border: 1px solid var(--border);
+  background: var(--bg); color: var(--text); cursor: pointer;
+}
+button:disabled { opacity: .5; cursor: default; }
+button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; }
+button.big { width: 100%; padding: 14px; font-size: 17px; margin: 8px 0; }
+button.small { padding: 7px 11px; font-size: 14px; }
+button.ghost { background: transparent; }
+button.danger { color: var(--danger); }
+
+.row { display: flex; gap: 8px; align-items: center; }
+.row.between { justify-content: space-between; }
+.row.wrap { flex-wrap: wrap; }
+.row > input { flex: 1; min-width: 0; }
+
+.chip {
+  font-size: 12px; padding: 2px 8px; border-radius: 99px; border: 1px solid var(--border); color: var(--muted);
+}
+.chip:empty { display: none; }
+
+.list { list-style: none; padding: 0; margin: 8px 0 0; }
+.list li {
+  padding: 12px 4px; border-top: 1px solid var(--border); cursor: pointer;
+  display: flex; justify-content: space-between; gap: 8px; align-items: center;
+}
+.list li:first-child { border-top: none; }
+.list .name { font-weight: 600; overflow-wrap: anywhere; }
+
+.builds { display: grid; gap: 8px; margin: 10px 0; }
+.build {
+  display: flex; gap: 10px; align-items: center; padding: 10px 12px;
+  border: 1px solid var(--border); border-radius: 10px; cursor: pointer;
+}
+.build input { width: 20px; height: 20px; flex: none; }
+.build .title { font-weight: 600; }
+
+details { margin-top: 10px; border-top: 1px solid var(--border); padding-top: 8px; }
+summary { cursor: pointer; padding: 6px 0; font-weight: 600; }
+
+progress { width: 100%; height: 14px; }
+pre#log {
+  background: var(--log-bg); color: var(--log-text); border-radius: 10px; padding: 10px;
+  font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; height: 260px; max-height: 45vh;
+  overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; margin: 8px 0;
+}
+.tips { padding-left: 18px; }
+.tips li { margin: 4px 0; }
+.ok { color: var(--ok); }
+.err { color: var(--danger); }
+pre#log:empty { height: 64px; }
+pre#log:empty::before { content: "Logs and serial output appear here."; color: var(--muted); }

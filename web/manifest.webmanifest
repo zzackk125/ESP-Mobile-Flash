@@ -1,0 +1,11 @@
+{
+  "name": "ESP Mobile Flash",
+  "short_name": "ESP Flash",
+  "description": "Flash ESP32 firmware built by GitHub Actions from your phone.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#14161a",
+  "theme_color": "#14161a",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

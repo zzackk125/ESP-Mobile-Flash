@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; connect-src 'self' https://api.github.com; img-src 'self' data:; style-src 'self'; script-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'">
+  <meta name="theme-color" content="#14161a">
+  <title>ESP Mobile Flash</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>ESP Mobile Flash</h1>
+  <button id="btn-settings" class="ghost" aria-label="Settings">⚙︎</button>
+</header>
+
+<main>
+  <div id="browser-warning" class="card warn" hidden>
+    <strong>This browser can't reach USB.</strong>
+    Firefox and Safari don't support Web Serial or WebUSB. Open this page in <b>Chrome</b> to flash over USB.
+    Wi-Fi (OTA) updates and downloads still work here.
+  </div>
+
+  <!-- Token setup / settings -->
+  <section id="settings" class="card" hidden>
+    <h2>Settings</h2>
+    <p class="muted">
+      Firmware is read from your private repos with a GitHub
+      <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">fine-grained token</a>:
+      Repository access → your ESP repos (or all), Permissions → <b>Contents: Read-only</b>.
+      It is stored only in this browser.
+    </p>
+    <label>GitHub token
+      <input id="token" type="password" autocomplete="off" placeholder="github_pat_…">
+    </label>
+    <div id="token-status" class="muted"></div>
+    <label>USB connection
+      <select id="conn-mode">
+        <option value="auto">Auto (WebUSB on Android, Web Serial elsewhere)</option>
+        <option value="usb">WebUSB</option>
+        <option value="serial">Web Serial</option>
+      </select>
+    </label>
+    <label>Flash baud rate (USB-UART adapters only)
+      <select id="baud">
+        <option>115200</option><option>230400</option><option selected>460800</option><option>921600</option>
+      </select>
+    </label>
+    <div class="row">
+      <button id="btn-save-settings">Save</button>
+      <button id="btn-signout" class="ghost danger">Remove token</button>
+    </div>
+  </section>
+
+  <!-- Project list -->
+  <section id="projects" class="card" hidden>
+    <div class="row between">
+      <h2>Projects</h2>
+      <button id="btn-refresh" class="ghost small">Refresh</button>
+    </div>
+    <input id="filter" type="search" placeholder="Filter projects">
+    <div id="project-status" class="muted"></div>
+    <ul id="project-list" class="list"></ul>
+  </section>
+
+  <!-- Selected project -->
+  <section id="project" class="card" hidden>
+    <div class="row between">
+      <button id="btn-back" class="ghost small">← Projects</button>
+      <span id="proj-visibility" class="chip"></span>
+    </div>
+    <h2 id="proj-name"></h2>
+    <label>Branch
+      <select id="branch"></select>
+    </label>
+    <div id="build-meta" class="muted"></div>
+    <div id="build-list" class="builds"></div>
+
+    <label class="check">
+      <input id="ota-enable" type="checkbox">
+      <span>Include Wi-Fi updates (OTA)<br>
+        <small class="muted">Adds an update server on port 8032 once the project connects to Wi-Fi.</small></span>
+    </label>
+    <label class="check">
+      <input id="erase-all" type="checkbox">
+      <span>Erase entire flash first<br><small class="muted">Also wipes saved settings and Wi-Fi credentials.</small></span>
+    </label>
+
+    <button id="btn-flash" class="primary big">Flash over USB</button>
+
+    <details id="ota-box">
+      <summary>Update over Wi-Fi</summary>
+      <p class="muted">Device must be running an OTA build and be on your network. Its address is printed in the
+        serial monitor as <code>[mobile-flash-ota] ready: http://…</code></p>
+      <label>Device address
+        <input id="ota-host" inputmode="url" placeholder="192.168.1.50">
+      </label>
+      <button id="btn-ota">Send update over Wi-Fi</button>
+    </details>
+
+    <details>
+      <summary>Download .bin</summary>
+      <div id="downloads" class="row wrap"></div>
+    </details>
+  </section>
+
+  <!-- Device / log -->
+  <section id="device" class="card">
+    <div class="row between">
+      <h2>Device</h2>
+      <span id="dev-chip" class="chip"></span>
+    </div>
+    <div id="progress-wrap" hidden>
+      <div id="progress-label" class="muted"></div>
+      <progress id="progress" max="100" value="0"></progress>
+    </div>
+    <pre id="log" aria-live="polite"></pre>
+    <div class="row wrap">
+      <button id="btn-monitor" class="small">Serial monitor</button>
+      <button id="btn-reset" class="small ghost" disabled>Reset board</button>
+      <button id="btn-clear" class="small ghost">Clear</button>
+    </div>
+    <form id="send-form" class="row" hidden>
+      <input id="send-text" placeholder="Send to device…" autocomplete="off">
+      <button class="small">Send</button>
+    </form>
+
+    <details>
+      <summary>Flash a local .bin file</summary>
+      <input id="local-file" type="file" accept=".bin,application/octet-stream">
+      <label>Offset
+        <input id="local-offset" value="0x0" inputmode="text">
+      </label>
+      <p class="muted">Merged images go at 0x0. App-only images usually go at 0x10000.</p>
+      <button id="btn-local-flash">Flash file</button>
+    </details>
+
+    <details>
+      <summary>Troubleshooting</summary>
+      <ul class="muted tips">
+        <li>Use a USB-C data cable (or OTG adapter) on the board's <b>USB</b> port (native USB), not the UART port.</li>
+        <li>If connecting fails: hold <b>BOOT</b>, tap <b>RESET</b>, release BOOT, then try again.</li>
+        <li>Boards with CP210x/FTDI chips only work via Web Serial (desktop Chrome). CH340 and native USB work on Android.</li>
+        <li>After flashing, a native-USB board restarts and reconnects — open the serial monitor again if needed.</li>
+      </ul>
+    </details>
+  </section>
+</main>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
