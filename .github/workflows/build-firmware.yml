@@ -62,6 +62,16 @@ jobs:
       group: mobile-flash-${{ github.repository }}-${{ github.ref_name }}
       cancel-in-progress: true
     steps:
+      # The ESP toolchains (pioarduino keeps two copies of each) need ~12 GB for
+      # S3 + C6; reclaim space from preinstalled SDKs this job never uses.
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup \
+            /opt/hostedtoolcache/CodeQL /usr/share/swift /usr/local/share/powershell &
+          sudo docker image prune --all --force >/dev/null 2>&1 &
+          wait
+          df -h / | tail -1
+
       - name: Check out project
         uses: actions/checkout@v4
         with:
@@ -78,27 +88,32 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Cache PlatformIO
+      # ~/.platformio is not cached: with ESP toolchains it exceeds the 10 GB cache
+      # limit, and a fresh download is faster than restoring it.
+      - name: Cache pip
         uses: actions/cache@v4
         with:
-          path: |
-            ~/.platformio
-            ~/.cache/pip
-          key: pio-${{ runner.os }}-${{ hashFiles(format('{0}/platformio.ini', inputs.project-dir)) }}
-          restore-keys: pio-${{ runner.os }}-
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-platformio
 
       - name: Install PlatformIO
         run: pip install --upgrade platformio
 
       - name: Build firmware
+        id: build
         run: |
           args=(--project-dir "${{ inputs.project-dir }}" --out-dir "$RUNNER_TEMP/firmware-out")
           [ -n "${{ inputs.environments }}" ] && args+=(--envs "${{ inputs.environments }}")
           [ "${{ inputs.ota-variant }}" = "true" ] || args+=(--no-ota)
-          python .mobile-flash-tools/tools/build_firmware.py "${args[@]}"
+          status=0
+          python .mobile-flash-tools/tools/build_firmware.py "${args[@]}" || status=$?
+          # Publish whatever built; a failed env is listed in the manifest and fails the job below.
+          builds=$(jq '.builds | length' "$RUNNER_TEMP/firmware-out/manifest.json" 2>/dev/null || echo 0)
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          echo "builds=$builds" >> "$GITHUB_OUTPUT"
 
       - name: Publish to firmware/${{ github.ref_name }}
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && steps.build.outputs.builds != '0'
         env:
           GH_TOKEN: ${{ github.token }}
           TARGET: firmware/${{ github.ref_name }}
@@ -118,8 +133,15 @@ jobs:
           jq -r '.builds[] | "- **\(.env)** \(.chip) (\(.variants | keys | join(", ")))"' manifest.json >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload build artifact
+        if: steps.build.outputs.builds != '0'
         uses: actions/upload-artifact@v4
         with:
           name: firmware-${{ github.run_id }}
           path: ${{ runner.temp }}/firmware-out
           retention-days: 14
+
+      - name: Fail if any environment failed
+        if: steps.build.outputs.status != '0'
+        run: |
+          echo "::error::Some environments failed to build: $(jq -r '.failed | join(", ")' "$RUNNER_TEMP/firmware-out/manifest.json" 2>/dev/null)"
+          exit 1

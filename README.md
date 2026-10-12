@@ -124,6 +124,6 @@ firmware/<branch>/
 ## Free-tier limits
 
 Private repos get 2,000 GitHub Actions minutes a month. A two-board project with
-the OTA variant takes about 3–5 minutes per push once the PlatformIO cache is warm,
+the OTA variant takes about 5–7 minutes per push (toolchains are downloaded fresh each run),
 so that's a few hundred builds a month. To save minutes, limit `environments:` or
 set `ota-variant: false` in a project's `firmware.yml`.
